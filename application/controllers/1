@@ -1,0 +1,56 @@
+<?php
+
+class wr_notice extends CI_Model {
+	
+	var $room_id = '';
+	var $user_id = '';
+	var $content = '';
+	var $notice_type = '';
+	var $page = '';
+	
+	function setData($data)
+	{
+		foreach(get_object_vars($this) as $k=>$v)
+		{
+			if(array_key_exists($k, $data))
+			{
+				$this->$k = $data[$k];
+			}
+		}
+	}
+	
+	function write()
+	{
+		$data = array(
+			'room_id' => $this->room_id,
+			'user_id' => $this->user_id,
+			'content' => $this->content,
+			'notice_type' => $this->notice_type,
+			'reg_date' => date('YmdHis')
+		);		
+		$this->db->insert('wr_notice',$data);
+		
+		return true;
+	}
+
+	function writeArticle()
+	{
+		$data = array(
+			'room_id' => $this->room_id,
+			'user_id' => $this->user_id,
+			'content' => $this->content,
+			'notice_type'=>$this->notice_type,
+			'reg_date' => date('YmdHis')
+		);		
+		$this->db->insert('wr_notice',$data);
+		return true;
+	}
+
+	function getRoomArticle()
+	{
+		$this->db->where('room_id' => $this->room_id);
+		$this->db->limit(10,$this->page);
+	}
+}
+
+?>

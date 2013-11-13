@@ -1,0 +1,269 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+require('base_controller.php');
+
+class room extends base_controller 
+{
+	function create_post()
+	{
+		$headers = apache_request_headers();
+		$acc_token = $headers['acc_token'];
+		$catId = $this->input->post('category_id');
+		$title = $this->input->post('check_room_title');
+		$isPublic = $this->input->post('publish_level');
+		$sDate = $this->input->post('start_date');
+		$eDate = $this->input->post('end_date');
+		$periodType = $this->input->post('period_type');
+		$id = $this->input->post('user_id');
+		$maxCnt = $this->input->post('max_member'); 
+		$content = $this->input->post('content');
+
+		//$this->wr_user->setData(array('acc_token'=>$acc_token,'id'=>$id));
+		$this->wr_room->setData(array('name'=>$title,'public_yn'=>$isPublic
+		,'start_date'=>date($sDate),'end_date'=>date($eDate),'period_type'=>$periodType,
+		'category_id'=>$catId,'manager_id'=>$id,'max_cnt'=>$maxCnt,'content'=>$content));
+		
+		foreach(get_defined_vars() as $k => $v)
+		{
+			if($v == null)
+			{
+				$this->response(wr_http_message::get400(), 400);
+			}
+		}
+		
+		if(!$this->isLogged($acc_token,$id))
+		{
+			$this->response(wr_http_message::get401("not_valid_access_token"), wr_http_message::ERROR_401);
+		}
+				
+		try{
+			$roomId = $this->wr_room->create();
+		}catch(Exception $ex){
+			$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+		}
+		$msgAry = wr_http_message::get200();
+		$msgAry['roomId'] = $roomId; 
+		$this->response($msgAry, wr_http_message::SUCCESS_200);
+	}
+
+	function update_post()
+	{
+		$headers = apache_request_headers();
+		$acc_token = $headers['acc_token'];
+		$catId = $this->input->post('category_id');
+		$title = $this->input->post('check_room_title');
+		$isPublic = $this->input->post('publish_level');
+		$sDate = $this->input->post('start_date');
+		$eDate = $this->input->post('end_date');
+		$periodType = $this->input->post('period_type');
+		$id = $this->input->post('user_id');
+		$maxCnt = $this->input->post('max_member'); 
+		$content = $this->input->post('content');
+		$room_id = $this->input->post('room_id');
+
+		$this->wr_room->setData(array('name'=>$title,'public_yn'=>$isPublic
+		,'start_date'=>date($sDate),'end_date'=>date($eDate),'period_type'=>$periodType,
+		'category_id'=>$catId,'manager_id'=>$id,'max_cnt'=>$maxCnt,'content'=>$content,'id'=>$room_id));
+		
+		foreach(get_defined_vars() as $k => $v)
+		{
+			if($v == null)
+			{
+				$this->response(wr_http_message::get400(), 400);
+			}
+		}
+		
+		if(!$this->isLogged($acc_token,$id))
+		{
+			$this->response(wr_http_message::get401("not_valid_access_token"), wr_http_message::ERROR_401);
+		}
+				
+		try{
+			$this->wr_room->update();
+		}catch(Exception $ex){
+			$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+		}
+		$msgAry = wr_http_message::get200();
+		$this->response(wr_http_message::get200(), wr_http_message::SUCCESS_200);
+
+	}
+	
+	function check_post()
+	{
+		$userId = $this->input->post('user_id');
+		$roomId = $this->input->post('room_id');
+		$headers = apache_request_headers();
+		$accToken = $headers['acc_token'];
+
+		if($userId == null || $roomId == null)
+		{
+			$this->response(wr_http_message::get400(), 400);
+		}
+
+		if(!$this->isLogged($accToken,$userId))
+		{
+			$this->response(wr_http_message::get401("not_valid_access_token"), wr_http_message::ERROR_401);
+		}
+		
+		try{
+			$this->wr_room->setData(array('id'=>$roomId,'user_id'=>$userId));
+			if($roomInfo = $this->wr_room->update_checked_cnt())
+			{
+				$this->wr_room_chk_user->setData(array('user_id'=>$userId,'room_id'=>$roomId));
+				$this->wr_room_chk_user->insert();
+				$msgAry = wr_http_message::get200();
+				$msgAry['checkedMemberCount'] = $roomInfo->checked_cnt+1;
+				$this->response($msgAry, wr_http_message::SUCCESS_200);				
+			}
+			else
+			{
+				$this->response(wr_http_message::get400('already_today_check'),
+						wr_http_message::ERROR_400);
+			}
+		}catch(Exception $ex){
+			$this->response(wr_http_message::get500($ex->getMessage()), wr_http_message::ERROR_500);
+		}
+	}
+	
+	function with_list_post()
+	{
+		$userId = $this->input->post('user_id');
+		$roomId = $this->input->post('room_id');
+		$headers = apache_request_headers();
+		$accToken = $headers['acc_token'];
+
+		if($userId == null || $roomId == null || $accToken == null)
+		{
+			$this->response(wr_http_message::get400(), 400);
+		}
+	
+		if(!$this->isLogged($accToken,$userId))
+		{
+			$this->response(wr_http_message::get401("not_valid_access_token"), wr_http_message::ERROR_401);
+		}
+		
+		try{
+			$this->wr_room->setData(array('user_id'=>$userId,'id'=>$roomId));
+			if($roomWith = $this->wr_room->check_room_with())
+			{
+				$msgAry = wr_http_message::get200();
+				$msgAry['checkRoomWith'] = $roomWith;
+				$this->response($msgAry, wr_http_message::SUCCESS_200);
+			}
+			else
+			{
+				$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+			}
+		}catch(Exception $ex){
+			$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+		}
+	}
+	
+	function write_post()
+	{
+		$roomId = $this->input->post('room_id'); 		
+		$notice_id = $this->input->post('notice_id');
+		$userId = $this->input->post('user_id');
+		$content = $this->input->post('content');
+		$headers = apache_request_headers();
+		$accToken = $headers['acc_token'];
+		
+		if($userId == null || $roomId == null || $accToken == null || $notcie_id ==
+				null)
+		{
+			$this->response(wr_http_message::get400(), 400);
+		}
+		
+		if(!$this->isLogged($accToken,$userId))
+		{
+			$this->response(wr_http_message::get401("not_valid_access_token"), wr_http_message::ERROR_401);
+		}
+		try{
+			$this->wr_notice_rly->setData(array('room_id'=>$roomId,'writer_id'=>$userId,'notice_id'=>$notice_id, 'content' => $content));
+			if($roomWith = $this->wr_notice_rly->write_rly())
+			{
+				$msgAry = wr_http_message::get200();
+				$this->response($msgAry, wr_http_message::SUCCESS_200);
+			}
+			else {
+				$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+			}
+		}catch(Exception $ex){
+			$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+		}
+	}
+	
+	function my_room_post()
+	{
+		$userId = $this->input->post('user_id');
+		$headers = apache_request_headers();
+		$accToken = $headers['acc_token'];
+
+		if($userId == null || $accToken == null)
+		{
+			$this->response(wr_http_message::get400(), 400);
+		}
+	
+		if(!$this->isLogged($accToken, $userId))
+		{
+			$this->response(wr_http_message::get401("not_valid_access_token"), wr_http_message::ERROR_401);
+		}
+		
+		try{
+			$this->wr_room->setData(array('user_id'=>$userId));
+			$msgAry = wr_http_message::get200();
+			$result = $this->wr_room->getJoinRoom();
+			if(count($result->roomList) > 0)
+			{
+				$msgAry['createRoomCount'] = $result->createRoomCount;
+				$msgAry['joinRoomCount'] = $result->joinRoomCount;
+				$msgAry['userStarCount'] = $result->userStarCount;
+				$msgAry['roomList'] = $result->roomList;
+				$this->response($msgAry, wr_http_message::SUCCESS_200);
+			}
+			else
+			{
+				$msgAry['createRoomCount'] = $result->createRoomCount;
+				$msgAry['joinRoomCount'] = $result->joinRoomCount;
+				$msgAry['userStarCount'] = $result->userStarCount;
+				$msgAry['roomList'] = $result->roomList;
+				$this->response($msgAry, wr_http_message::SUCCESS_200);
+			}
+		}catch(Exception $ex){
+			$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+		}
+	}
+
+	function article_rly_post()
+	{
+		$userId = $this->input->post('user_id');
+		$noticeId = $this->input->post('notice_id');
+		$headers = apache_request_headers();
+		$accToken = $headers['acc_token'];
+
+		if($userId == null || $noticeId == null || $accToken == null)
+		{
+			$this->response(wr_http_message::get400(), 400);
+		}
+
+		if(!$this->isLogged($accToken, $userId))
+		{
+			$this->response(wr_http_message::get401("not_valid_access_token"), wr_http_message::ERROR_401);
+		}
+
+		try{
+			$this->wr_notice_rly->setData(array('user_id'=>$userId,'notice_id'=>$noticeId));
+			if($rlyList = $this->wr_notice_rly->getRly())
+			{
+				$msgAry = wr_http_message::get200();
+				$msgAry['messageList'] = $rlyList;
+				$this->response($msgAry, wr_http_message::SUCCESS_200);
+			}
+		}catch(Exception $ex){
+			$this->response(wr_http_message::get500(), wr_http_message::ERROR_500);
+		}
+
+	}
+}
+
+?>
